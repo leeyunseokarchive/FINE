@@ -53,12 +53,24 @@ export default function TabsLayout() {
         },
       }}
     >
-      {/* 파일명과 name 반드시 일치: app/tabs/expense.tsx */}
+      {/* Character 탭 */}
+      <Tabs.Screen
+        name="char"
+        options={{
+          title: "Character",
+          tabBarLabel: "Character",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Icon name="people-outline" color={color} size={size} focused={focused} />
+          ),
+        }}
+      />
+
+      {/* Expense 탭 */}
       <Tabs.Screen
         name="expense"
         options={{
           title: "Expense",
-          tabBarLabel: "Expense", // ← 라벨 강제 지정
+          tabBarLabel: "Expense",
           tabBarIcon: ({ color, size, focused }) => (
             <Icon name="receipt-outline" color={color} size={size} focused={focused} />
           ),
@@ -77,7 +89,7 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* 오른쪽 맵 */}
+      {/* 세 번째 맵 */}
       <Tabs.Screen
         name="map" // app/tabs/map.tsx
         options={{
@@ -85,6 +97,18 @@ export default function TabsLayout() {
           tabBarLabel: "Map",
           tabBarIcon: ({ color, size, focused }) => (
             <Icon name="map-outline" color={color} size={size} focused={focused} />
+          ),
+        }}
+      />
+
+      {/* 네 번째 내 정보 */}
+      <Tabs.Screen
+        name="my" // app/tabs/my.tsx
+        options={{
+          title: "My",
+          tabBarLabel: "My",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Icon name="person-outline" color={color} size={size} focused={focused} />
           ),
         }}
       />

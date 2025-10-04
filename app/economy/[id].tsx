@@ -43,7 +43,7 @@ export default function QuizEasyDetail() {
     <View style={styles.container}>
       <Stack.Screen
         options={{
-          title: `문제 ${quiz.id}`,
+          title: quiz.title,
           headerTitleAlign: "center",
           headerTitleStyle: { fontSize: 18, fontWeight: "700" },
         }}
@@ -52,7 +52,6 @@ export default function QuizEasyDetail() {
       {/* 위(6) : content */}
       <View style={[styles.top, { height: TOP_H }]}>
         <View style={styles.contentCard}>
-          <Text style={styles.contentTitle}>{quiz.title}</Text>
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingBottom: 12 }}
