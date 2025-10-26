@@ -1,49 +1,21 @@
 import type { Href } from "expo-router";
-import { router, Stack } from "expo-router";
-import React, { useState } from "react";
+import { router, Stack, useLocalSearchParams } from "expo-router";
+import React from "react";
 import { FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { QUIZ_LIST } from "../../src/data/quiz";
 
 export default function EconomyList() {
-  const [selectedLevel, setSelectedLevel] = useState<number>(1);
+  const params = useLocalSearchParams();
 
-  // 경제, 회계, 경영 주제만 필터링
-  const filteredData = QUIZ_LIST.filter(item => 
-    item.subject === "경제" || item.subject === "회계" || item.subject === "경영"
-  );
-
-  // 선택된 레벨에 따라 추가 필터링
-  const levelFilteredData = filteredData.filter(item => item.level === selectedLevel);
-
-  const renderLevelTab = (level: number, label: string, color: string) => (
-    <TouchableOpacity
-      key={level}
-      style={[
-        styles.levelTab,
-        { backgroundColor: selectedLevel === level ? color : "#F3F4F6" }
-      ]}
-      onPress={() => setSelectedLevel(level)}
-    >
-      <Text style={[
-        styles.levelTabText,
-        { color: selectedLevel === level ? "#FFFFFF" : "#6B7280" }
-      ]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
+  // 주제 필터링 없이 모든 퀴즈 가져오기
+  // URL 파라미터 또는 기본값으로 난이도만 필터링
+  const levelFromParams = params.level ? parseInt(params.level as string, 10) : 1;
+  const levelFilteredData = QUIZ_LIST.filter(item => item.level === levelFromParams);
 
   return (
     <View style={styles.container}>
       {/* 헤더 제목 */}
-      <Stack.Screen options={{ title: "경제의 정석" }} />
-
-      {/* 난이도 탭 */}
-      <View style={styles.tabContainer}>
-        {renderLevelTab(1, "초급", "#10B981")}
-        {renderLevelTab(2, "중급", "#F59E0B")}
-        {renderLevelTab(3, "고급", "#EC4899")}
-      </View>
+      <Stack.Screen options={{ title: "교과목" }} />
 
       <FlatList
         data={levelFilteredData}
@@ -79,23 +51,6 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     backgroundColor: "#F0FDF4" // 연한 녹색 배경
-  },
-  tabContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  levelTab: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    alignItems: "center",
-  },
-  levelTabText: {
-    fontSize: 14,
-    fontWeight: "600",
   },
   card: {
     backgroundColor: "#FFFFFF",

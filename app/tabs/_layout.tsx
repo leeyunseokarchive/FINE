@@ -65,14 +65,14 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* Expense 탭 */}
+      {/* School 탭 */}
       <Tabs.Screen
-        name="expense"
+        name="school"
         options={{
-          title: "Expense",
-          tabBarLabel: "Expense",
+          title: "School",
+          tabBarLabel: "School",
           tabBarIcon: ({ color, size, focused }) => (
-            <Icon name="receipt-outline" color={color} size={size} focused={focused} />
+            <Icon name="school-outline" color={color} size={size} focused={focused} />
           ),
         }}
       />

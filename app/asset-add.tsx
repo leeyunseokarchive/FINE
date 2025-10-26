@@ -30,13 +30,21 @@ export default function AssetAddScreen() {
     router.push("/asset-config");
   };
 
-  // subject2가 일치하는 항목들 필터링
-  const filteredAssets = useMemo(() => 
-    QUIZ_LIST.filter(item => 
-      item.subject === "투자상품" && item.subject2 === category
-    ), 
-    [category]
-  );
+  // 카테고리별 타이틀 매핑
+  const categoryTitles: { [key: string]: string[] } = {
+    "현금 및 예금": ["보통예금", "정기예금", "CMA/MMF"],
+    "채권": ["국채", "회사채", "금융채"],
+    "주식": ["국내주식", "해외주식", "ETF"],
+    "펀드, 기타 투자상품": ["공모펀드", "리츠", "대체상품", "선물거래", "전환사채"]
+  };
+
+  // title이 일치하는 항목들 필터링
+  const filteredAssets = useMemo(() => {
+    const titles = categoryTitles[category] || [];
+    return QUIZ_LIST.filter(item => 
+      item.subject === "투자상품" && titles.includes(item.title)
+    );
+  }, [category]);
 
   // 각 자산 항목별 값 상태 관리 (저장된 값이 있으면 불러오기)
   const [assetValues, setAssetValues] = useState<{ [key: string]: number }>(() => {

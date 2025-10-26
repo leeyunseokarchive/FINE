@@ -58,14 +58,23 @@ export default function AssetConfigScreen() {
   // 저장된 자산 값들 가져오기
   const savedValues = getSavedAssetValues();
 
+  // 카테고리별 타이틀 매핑
+  const categoryTitles: { [key: string]: string[] } = {
+    "현금 및 예금": ["보통예금", "정기예금", "CMA/MMF"],
+    "채권": ["국채", "회사채", "금융채"],
+    "주식": ["국내주식", "해외주식", "ETF"],
+    "펀드, 기타 투자상품": ["공모펀드", "리츠", "대체상품", "선물거래", "전환사채"]
+  };
+
   // 각 카테고리별 총 값 계산 및 비율 계산
   const calculateCategoryTotal = useMemo(() => {
     const totals: { [key: string]: { current: number; max: number; percentage: number } } = {};
     
     // 먼저 모든 카테고리의 current 값을 계산
     chartSegments.forEach(segment => {
+      const titles = categoryTitles[segment.category] || [];
       const categoryAssets = QUIZ_LIST.filter(item => 
-        item.subject === "투자상품" && item.subject2 === segment.category
+        item.subject === "투자상품" && titles.includes(item.title)
       );
       
       const currentTotal = categoryAssets.reduce((sum, asset) => {

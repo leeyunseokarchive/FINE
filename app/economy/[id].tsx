@@ -10,6 +10,7 @@ import {
     View,
 } from "react-native";
 import { ListItem, QUIZ_LIST } from "../../src/data/quiz";
+import { useGameState } from "../../src/stores/gameState";
 
 const { height: SCREEN_H } = Dimensions.get("window");
 const TOP_H = Math.round(SCREEN_H * 0.52);
@@ -17,12 +18,26 @@ const BOTTOM_H = SCREEN_H - TOP_H;
 
 export default function QuizEasyDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { addMoney } = useGameState();
   const quiz: ListItem | undefined = useMemo(
     () => QUIZ_LIST.find((q) => q.id === String(id)),
     [id]
   );
 
   const [picked, setPicked] = useState<number | null>(null);
+  const [isAnswered, setIsAnswered] = useState(false);
+
+  const handleChoice = (idx: number) => {
+    if (isAnswered) return; // 이미 답을 선택했다면 무시
+    
+    setPicked(idx);
+    setIsAnswered(true);
+    
+    // 정답인 경우 돈 10 증가
+    if (idx === quiz?.answer) {
+      addMoney(10);
+    }
+  };
 
   if (!quiz) {
     return (
@@ -74,12 +89,13 @@ export default function QuizEasyDetail() {
           return (
             <TouchableOpacity
               key={opt.idx}
-              activeOpacity={0.9}
-              onPress={() => setPicked(opt.idx)}
+              activeOpacity={isAnswered ? 1 : 0.9}
+              onPress={() => handleChoice(opt.idx)}
               style={[
                 styles.choiceBtn,
                 isCorrectPick && styles.choiceBtnCorrect,
                 isWrongPick && styles.choiceBtnWrong,
+                isAnswered && !isPicked && styles.choiceBtnDisabled,
               ]}
             >
               <Text
@@ -138,6 +154,7 @@ const styles = StyleSheet.create({
   },
   choiceBtnCorrect: { backgroundColor: "#22c55e", borderColor: "#16a34a" },
   choiceBtnWrong: { backgroundColor: "#ef4444", borderColor: "#dc2626" },
+  choiceBtnDisabled: { opacity: 0.5 },
   choiceText: { fontSize: 15, color: "#111827" },
   choiceTextOnColored: { color: "#fff", fontWeight: "700" },
 

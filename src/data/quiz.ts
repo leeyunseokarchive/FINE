@@ -10,7 +10,6 @@ export type ListItem = {
   number_four: string;
   answer: number;
   subject: string;
-  subject2?: string;
   level: number;
 };
 
@@ -82,7 +81,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "거래 비용 절약",
     number_four: "세금 혜택",
     answer: 2,
-    subject: "지표",
+    subject: "경제",
     level: 3
   },
   { 
@@ -96,7 +95,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "위험 프리미엄",
     number_four: "모든 위의 것들",
     answer: 4,
-    subject: "지표",
+    subject: "경제",
     level: 2
   },
   { 
@@ -110,7 +109,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "고수익 투자",
     number_four: "대형주 투자",
     answer: 1,
-    subject: "지표",
+    subject: "경제",
     level: 1
   },
   { 
@@ -124,7 +123,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "시장과 동일한 수익",
     number_four: "손실",
     answer: 1,
-    subject: "지표",
+    subject: "경제",
     level: 3
   },
   { 
@@ -138,7 +137,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "시장보다 변동성이 높음",
     number_four: "변동성이 없음",
     answer: 3,
-    subject: "지표",
+    subject: "경제",
     level: 2
   },
   { 
@@ -152,7 +151,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "국채 수익률이 높음",
     number_four: "채권 수익률이 높음",
     answer: 2,
-    subject: "지표",
+    subject: "경제",
     level: 2
   },
   { 
@@ -166,7 +165,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "가격 변동이 큼",
     number_four: "손실 위험이 높음",
     answer: 1,
-    subject: "지표",
+    subject: "경제",
     level: 1
   },
   { 
@@ -176,12 +175,11 @@ export const QUIZ_LIST: ListItem[] = [
     content: "보통예금은 금융기관에 예치할 수 있는 가장 기본적인 상품으로, 언제든지 입금과 출금이 가능합니다. 안전성이 높지만 이자율은 낮은 편입니다.",
     question: "보통예금의 가장 큰 특징은 무엇인가요?",
     number_one: "높은 이자율",
-    number_two: "언제든지 입출금 가능",
+    number_two: "언제든지 입출금 가능", 
     number_three: "투자 위험 높음",
     number_four: "장기간 거래 제한",
     answer: 2,
-    subject: "투자상품",
-    subject2: "현금 및 예금",
+    subject: "경제",
     level: 1
   },
   { 
@@ -195,8 +193,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "빈번한 입출금",
     number_four: "단기간 예치",
     answer: 2,
-    subject: "투자상품",
-    subject2: "현금 및 예금",
+    subject: "경제",
     level: 1
   },
   { 
@@ -210,8 +207,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "높은 투자 위험",
     number_four: "장기간 거래 제한",
     answer: 2,
-    subject: "투자상품",
-    subject2: "현금 및 예금",
+    subject: "경제",
     level: 2
   },
   { 
@@ -225,8 +221,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "높은 변동성",
     number_four: "짧은 만료기간",
     answer: 2,
-    subject: "투자상품",
-    subject2: "채권",
+    subject: "경제",
     level: 1
   },
   { 
@@ -240,8 +235,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "투자 위험 높음",
     number_four: "만료 기간 짧음",
     answer: 3,
-    subject: "투자상품",
-    subject2: "채권",
+    subject: "경제",
     level: 2
   },
   { 
@@ -255,8 +249,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "높은 위험",
     number_four: "장기간 보유",
     answer: 2,
-    subject: "투자상품",
-    subject2: "채권",
+    subject: "경제",
     level: 2
   },
   { 
@@ -270,8 +263,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "관리 수수료만",
     number_four: "보험 수수료만",
     answer: 2,
-    subject: "투자상품",
-    subject2: "주식",
+    subject: "경제",
     level: 1
   },
   { 
@@ -285,8 +277,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "낮은 유동성만",
     number_four: "낮은 수익률만",
     answer: 2,
-    subject: "투자상품",
-    subject2: "주식",
+    subject: "경제",
     level: 3
   },
   { 
@@ -300,8 +291,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "실시간 거래 가능과 낮은 수수료",
     number_four: "높은 위험성",
     answer: 3,
-    subject: "투자상품",
-    subject2: "주식",
+    subject: "경제",
     level: 2
   },
   { 
@@ -315,8 +305,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "전문가 운용과 분산투자",
     number_four: "높은 투자 한도",
     answer: 3,
-    subject: "투자상품",
-    subject2: "펀드, 기타 투자상품",
+    subject: "경제",
     level: 2
   },
   { 
@@ -330,8 +319,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "배당금만",
     number_four: "관리비 수익만",
     answer: 2,
-    subject: "투자상품",
-    subject2: "펀드, 기타 투자상품",
+    subject: "경제",
     level: 3
   },
   { 
@@ -345,8 +333,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "높은 유동성",
     number_four: "낮은 참여 한도",
     answer: 2,
-    subject: "투자상품",
-    subject2: "펀드, 기타 투자상품",
+    subject: "경제",
     level: 3
   },
   { 
@@ -360,8 +347,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "장기 투자 안정성",
     number_four: "높은 배당 수익",
     answer: 2,
-    subject: "투자상품",
-    subject2: "펀드, 기타 투자상품",
+    subject: "경제",
     level: 3
   },
   { 
@@ -375,8 +361,7 @@ export const QUIZ_LIST: ListItem[] = [
     number_three: "높은 변동성",
     number_four: "낮은 유동성",
     answer: 2,
-    subject: "투자상품",
-    subject2: "펀드, 기타 투자상품",
+    subject: "경제",
     level: 3
   }
 ];
