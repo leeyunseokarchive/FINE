@@ -2,7 +2,6 @@
 
 **앱으로 함께하는 일상 속 금융 교육**
 
-[![GitHub last commit](https://img.shields.io/github/last-commit/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME?color=green)](https://github.com/leeyunseokarchive/FINE/commits/main)
 [![Technology](https://img.shields.io/badge/Tech-App%20Development-orange)](./docs/tech_stack.md)
 [![Status](https://img.shields.io/badge/Status-In%20Development-red)](./docs/status.md)
 
