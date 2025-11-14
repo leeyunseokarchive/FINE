@@ -74,9 +74,4 @@ FINE 팀은 금융에 대한 공통의 목표를 공유하는 충남대학교 �
 
 ---
 
-### 📄 관련 문서 및 문의
-* [프로젝트 기획서 (PDF)](./docs/251112_FINE_Presentation.pdf)
-* [기술 스택 상세](./docs/tech_stack.md)
-* [Issue Tracker](https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/issues)
-
-> **© 2024 FINE Team.** All rights reserved.
+> **© 2025 FINE Team.** All rights reserved.
