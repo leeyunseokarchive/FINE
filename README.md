@@ -1,50 +1,75 @@
-# Welcome to your Expo app 👋
+# FINE App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+This is a React Native application built with Expo.
 
-## Get started
+## Getting Started
 
-1. Install dependencies
+Follow these steps to set up and run the project locally.
 
-   ```bash
-   npm install
-   ```
+### Prerequisites
 
-2. Start the app
+Make sure you have Node.js and npm (or Yarn) installed. It's recommended to use a Node.js version supported by Expo.
 
-   ```bash
-   npx expo start
-   ```
+### Installation
 
-In the output, you'll find options to open the app in a
+1.  **Clone the repository:**
+    ```bash
+    git clone <repository-url>
+    cd FINE
+    ```
+    (Replace `<repository-url>` with the actual URL of your repository.)
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    # or
+    yarn install
+    ```
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### Running the App
 
-## Get a fresh project
+You can run the app on a web browser, Android, or iOS device/simulator.
 
-When you're ready, run:
+1.  **Start the Expo development server:**
+    ```bash
+    npm start
+    # or
+    yarn start
+    ```
+    This will open a new tab in your browser with the Expo Dev Tools.
 
-```bash
-npm run reset-project
-```
+2.  **Run on a specific platform:**
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+    -   **Web:**
+        ```bash
+        npm run web
+        # or
+        yarn web
+        ```
 
-## Learn more
+    -   **Android:**
+        ```bash
+        npm run android
+        # or
+        yarn android
+        ```
+        (Requires an Android emulator or a physical Android device connected and set up for development.)
 
-To learn more about developing your project with Expo, look at the following resources:
+    -   **iOS:**
+        ```bash
+        npm run ios
+        # or
+        yarn ios
+        ```
+        (Requires Xcode and an iOS simulator or a physical iOS device connected and set up for development.)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Project Structure
 
-## Join the community
+-   `app/`: Contains the main application screens and navigation.
+-   `components/`: Reusable UI components.
+-   `assets/`: Static assets like images.
+-   `constants/`: Application-wide constants.
+-   `hooks/`: Custom React hooks.
+-   `src/`: Source code for configuration, data, and stores.
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+---
