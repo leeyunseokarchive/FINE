@@ -39,10 +39,10 @@ export default function TabsLayout() {
           position: "absolute",
           backgroundColor: "#fff",
           borderTopWidth: 0,
-          height: 88,
-          paddingTop: 8,
-          paddingBottom: 18,
-          paddingHorizontal: 28,
+          height: 70,
+          paddingTop: 6,
+          paddingBottom: 14,
+          paddingHorizontal: 16,
           borderTopLeftRadius: 24,
           borderTopRightRadius: 24,
           shadowColor: "#000",
@@ -53,18 +53,6 @@ export default function TabsLayout() {
         },
       }}
     >
-      {/* Character 탭 */}
-      <Tabs.Screen
-        name="char"
-        options={{
-          title: "Character",
-          tabBarLabel: "Character",
-          tabBarIcon: ({ color, size, focused }) => (
-            <Icon name="people-outline" color={color} size={size} focused={focused} />
-          ),
-        }}
-      />
-
       {/* School 탭 */}
       <Tabs.Screen
         name="school"
@@ -89,14 +77,14 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* 세 번째 맵 */}
+      {/* 커뮤니티 */}
       <Tabs.Screen
-        name="map" // app/tabs/map.tsx
+        name="community" // app/tabs/community.tsx
         options={{
-          title: "Map",
-          tabBarLabel: "Map",
+          title: "Community",
+          tabBarLabel: "Community",
           tabBarIcon: ({ color, size, focused }) => (
-            <Icon name="map-outline" color={color} size={size} focused={focused} />
+            <Icon name="chatbubbles-outline" color={color} size={size} focused={focused} />
           ),
         }}
       />

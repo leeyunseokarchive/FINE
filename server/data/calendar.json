@@ -1,0 +1,26 @@
+[
+  {
+    "id": "event-1",
+    "date": "2025-11-05",
+    "title": "금융 연준 회의",
+    "source": "default"
+  },
+  {
+    "id": "event-2",
+    "date": "2025-11-10",
+    "title": "기업 공시 발표",
+    "source": "default"
+  },
+  {
+    "id": "event-3",
+    "date": "2025-11-15",
+    "title": "채권 입찰",
+    "source": "default"
+  },
+  {
+    "id": "e06b4e4d-5a5c-44c3-8760-0221ec8571e6",
+    "date": "2025-11-15",
+    "title": "going home",
+    "source": "user"
+  }
+]

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, useWindowDimensions, StyleSheet } from 'react-native';
 
-const ASPECT_RATIO = 9 / 16;
+const ASPECT_RATIO = 9 / 20;
 
 export default function AspectRatioView({ children }: { children: React.ReactNode }) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
