@@ -9,8 +9,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Platform,
 } from "react-native";
+import { collection, addDoc, getDocs } from "firebase/firestore";
+import { db } from "../../src/config/firebase";
 
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -92,18 +93,6 @@ type CalendarEventDisplay = {
 
 const EVENT_COLORS = ["#FEE2E2", "#DBEAFE", "#DCFCE7", "#FDE68A"];
 
-const resolveApiBaseUrl = () => {
-  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
-    return process.env.EXPO_PUBLIC_API_BASE_URL;
-  }
-  if (Platform.OS === "android") {
-    return "http://10.0.2.2:4000";
-  }
-  return "http://localhost:4000";
-};
-
-const API_BASE_URL = resolveApiBaseUrl();
-
 const groupEventsByDate = (
   events: CalendarEventFromServer[]
 ): Record<string, CalendarEventDisplay[]> => {
@@ -147,11 +136,15 @@ export default function HomeScreen() {
       try {
         setLoadingEvents(true);
         setEventsError(null);
-        const response = await fetch(`${API_BASE_URL}/events`);
-        if (!response.ok) {
-          throw new Error("일정을 불러오지 못했습니다.");
-        }
-        const serverEvents: CalendarEventFromServer[] = await response.json();
+        const snapshot = await getDocs(collection(db, "events"));
+        const serverEvents: CalendarEventFromServer[] = snapshot.docs.map((doc) => {
+          const data = doc.data() as { date?: string; title?: string };
+          return {
+            id: doc.id,
+            date: data.date ?? "",
+            title: data.title ?? "",
+          };
+        });
         setEventsByDate(groupEventsByDate(serverEvents));
       } catch (error) {
         console.error(error);
@@ -315,23 +308,16 @@ export default function HomeScreen() {
                   }
                   const key = formatDateKey(selectedDate);
                   const title = newEventTitle.trim();
-                  fetch(`${API_BASE_URL}/events`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ date: key, title }),
-                  })
-                    .then(async (response) => {
-                      if (!response.ok) {
-                        throw new Error("일정을 저장하지 못했습니다.");
-                      }
-                      const createdEvent: CalendarEventFromServer = await response.json();
+
+                  addDoc(collection(db, "events"), { date: key, title })
+                    .then((docRef) => {
                       setEventsByDate((prev) => {
                         const prevEvents = prev[key] ?? [];
                         const color =
                           EVENT_COLORS[prevEvents.length % EVENT_COLORS.length];
                         const newEvent: CalendarEventDisplay = {
-                          id: createdEvent.id,
-                          title: createdEvent.title,
+                          id: docRef.id,
+                          title,
                           color,
                         };
                         return {

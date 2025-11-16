@@ -89,6 +89,18 @@ export default function TabsLayout() {
         }}
       />
 
+      {/* 공고/콘텐츠 */}
+      <Tabs.Screen
+        name="content" // app/tabs/content.tsx
+        options={{
+          title: "공고",
+          tabBarLabel: "공고",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Icon name="albums-outline" color={color} size={size} focused={focused} />
+          ),
+        }}
+      />
+
       {/* 네 번째 내 정보 */}
       <Tabs.Screen
         name="my" // app/tabs/my.tsx

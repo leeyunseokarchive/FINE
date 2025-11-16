@@ -1,5 +1,5 @@
 import { Stack, router } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -7,8 +7,10 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Platform,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../src/config/firebase";
 
 type CommunityCategory = "전체" | "공지" | "자유" | "칼럼";
 
@@ -21,18 +23,6 @@ type CommunityPost = {
   createdAt?: string;
 };
 
-const resolveApiBaseUrl = () => {
-  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
-    return process.env.EXPO_PUBLIC_API_BASE_URL;
-  }
-  if (Platform.OS === "android") {
-    return "http://10.0.2.2:4000";
-  }
-  return "http://localhost:4000";
-};
-
-const API_BASE_URL = resolveApiBaseUrl();
-
 export default function CommunityScreen() {
   const [selectedCategory, setSelectedCategory] =
     useState<CommunityCategory>("전체");
@@ -40,27 +30,53 @@ export default function CommunityScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await fetch(`${API_BASE_URL}/community`);
-        if (!response.ok) {
-          throw new Error("커뮤니티 데이터를 불러오지 못했습니다.");
-        }
-        const data: CommunityPost[] = await response.json();
-        setPosts(data);
-      } catch (err) {
-        console.error(err);
-        setError("커뮤니티 목록을 불러오는 중 오류가 발생했습니다.");
-      } finally {
-        setLoading(false);
-      }
-    };
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
 
-    fetchPosts();
-  }, []);
+      const fetchPosts = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          const snapshot = await getDocs(collection(db, "communityPosts"));
+          if (!isActive) return;
+
+          const data: CommunityPost[] = snapshot.docs.map((doc) => {
+            const raw = doc.data() as {
+              category?: CommunityCategory | string;
+              title?: string;
+              author?: string;
+              createdAt?: string;
+              comments?: unknown[];
+            };
+
+            return {
+              id: doc.id,
+              category: raw.category ?? "자유",
+              title: raw.title ?? "",
+              replies: Array.isArray(raw.comments) ? raw.comments.length : 0,
+              author: raw.author,
+              createdAt: raw.createdAt,
+            };
+          });
+          setPosts(data);
+        } catch (err) {
+          console.error(err);
+          setError("커뮤니티 목록을 불러오는 중 오류가 발생했습니다.");
+        } finally {
+          if (isActive) {
+            setLoading(false);
+          }
+        }
+      };
+
+      fetchPosts();
+
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
 
   const filteredPosts = useMemo(() => {
     if (selectedCategory === "전체") {
@@ -75,6 +91,16 @@ export default function CommunityScreen() {
 
       <View style={styles.header}>
         <Text style={styles.headerTitle}>커뮤니티</Text>
+        <TouchableOpacity
+          style={styles.writeButton}
+          onPress={() =>
+            router.push({
+              pathname: "/community/new",
+            })
+          }
+        >
+          <Text style={styles.writeButtonText}>글쓰기</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.tabRow}>
@@ -165,11 +191,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 28,
     paddingBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: "700",
     color: "#111827",
+  },
+  writeButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "#111827",
+  },
+  writeButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   tabRow: {
     flexDirection: "row",

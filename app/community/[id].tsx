@@ -8,8 +8,10 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Platform,
+  Alert,
 } from "react-native";
+import { arrayUnion, doc, getDoc, updateDoc } from "firebase/firestore";
+import { db } from "../../src/config/firebase";
 
 type CommunityComment = {
   id: string;
@@ -29,18 +31,6 @@ type CommunityPostDetail = {
   content: string;
   comments: CommunityComment[];
 };
-
-const resolveApiBaseUrl = () => {
-  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
-    return process.env.EXPO_PUBLIC_API_BASE_URL;
-  }
-  if (Platform.OS === "android") {
-    return "http://10.0.2.2:4000";
-  }
-  return "http://localhost:4000";
-};
-
-const API_BASE_URL = resolveApiBaseUrl();
 
 const formatDateTime = (value?: string) => {
   if (!value) {
@@ -68,18 +58,25 @@ export default function CommunityDetailScreen() {
   const [post, setPost] = useState<CommunityPostDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [newComment, setNewComment] = useState("");
+  const [submittingComment, setSubmittingComment] = useState(false);
 
   useEffect(() => {
     const fetchPost = async () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch(`${API_BASE_URL}/community/${params.id}`);
-        if (!response.ok) {
-          throw new Error("게시글을 불러오지 못했습니다.");
+        const id = params.id as string;
+        const postRef = doc(db, "communityPosts", id);
+        const snapshot = await getDoc(postRef);
+        if (!snapshot.exists()) {
+          throw new Error("게시글을 찾을 수 없습니다.");
         }
-        const data: CommunityPostDetail = await response.json();
-        setPost(data);
+        const data = snapshot.data() as Omit<CommunityPostDetail, "id">;
+        setPost({
+          id: snapshot.id,
+          ...data,
+        });
       } catch (err) {
         console.error(err);
         setError("게시글을 불러오는 중 오류가 발생했습니다.");
@@ -92,6 +89,46 @@ export default function CommunityDetailScreen() {
       fetchPost();
     }
   }, [params.id]);
+
+  const handleSubmitComment = async () => {
+    if (!post) return;
+    if (!newComment.trim()) {
+      Alert.alert("입력 필요", "댓글 내용을 입력해 주세요.");
+      return;
+    }
+
+    try {
+      setSubmittingComment(true);
+      const id = post.id;
+      const postRef = doc(db, "communityPosts", id);
+
+      const comment: CommunityComment = {
+        id: `${Date.now()}`,
+        author: "익명",
+        content: newComment.trim(),
+        createdAt: new Date().toISOString(),
+      };
+
+      await updateDoc(postRef, {
+        comments: arrayUnion(comment),
+      });
+
+      setPost((prev) =>
+        prev
+          ? {
+              ...prev,
+              comments: [...prev.comments, comment],
+            }
+          : prev
+      );
+      setNewComment("");
+    } catch (err) {
+      console.error(err);
+      Alert.alert("오류", "댓글 등록에 실패했습니다. 다시 시도해 주세요.");
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -174,11 +211,19 @@ export default function CommunityDetailScreen() {
             style={styles.commentInput}
             placeholder="댓글을 남겨보세요."
             placeholderTextColor="#9CA3AF"
-            editable={false}
+            editable={!submittingComment}
+            value={newComment}
+            onChangeText={setNewComment}
           />
           <View style={styles.commentInputActions}>
-            <TouchableOpacity style={styles.commentActionButton}>
-              <Text style={styles.commentActionButtonText}>등록</Text>
+            <TouchableOpacity
+              style={styles.commentActionButton}
+              onPress={handleSubmitComment}
+              disabled={submittingComment}
+            >
+              <Text style={styles.commentActionButtonText}>
+                {submittingComment ? "등록 중..." : "등록"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
