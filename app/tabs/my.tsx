@@ -1,6 +1,8 @@
-import { router, Stack } from "expo-router";
-import React, { useMemo } from "react";
+import { Stack, router } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -8,101 +10,236 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { QUIZ_LIST } from "../../src/data/quiz";
+import { Ionicons } from "@expo/vector-icons";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { signOut } from "firebase/auth";
+import { auth, db } from "../../src/config/firebase";
+
+type MenuItem = {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  count: number | null;
+  page?: string;
+};
 
 export default function MyScreen() {
-  // 지표만 필터링 (subject가 "지표"인 항목들)
-  const indicatorItems = useMemo(() => 
-    QUIZ_LIST.filter(item => item.subject === "지표"), 
-    []
-  );
+  const [user, setUser] = useState<{
+    displayName?: string | null;
+    email?: string | null;
+  } | null>(null);
+  const [myPostsCount, setMyPostsCount] = useState(0);
+  const [commentsCount, setCommentsCount] = useState(0);
+  const [savedContestsCount, setSavedContestsCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  const handleAssetConfig = () => {
-    router.push("/asset-config");
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          setUser({
+            displayName: currentUser.displayName,
+            email: currentUser.email,
+          });
+
+          // 내 게시글 수 계산
+          const postsQuery = query(
+            collection(db, "communityPosts"),
+            where("author", "==", currentUser.email || "")
+          );
+          const postsSnapshot = await getDocs(postsQuery);
+          setMyPostsCount(postsSnapshot.size);
+
+          // 댓글 수 계산 (모든 게시글의 comments 배열에서 현재 사용자 댓글 찾기)
+          const allPostsSnapshot = await getDocs(collection(db, "communityPosts"));
+          let totalComments = 0;
+          allPostsSnapshot.forEach((doc) => {
+            const data = doc.data();
+            if (Array.isArray(data.comments)) {
+              const userComments = data.comments.filter(
+                (comment: { author?: string }) =>
+                  comment.author === currentUser.email
+              );
+              totalComments += userComments.length;
+            }
+          });
+          setCommentsCount(totalComments);
+
+          // 저장한 공고 수 (일단 0으로 설정, 나중에 savedContests 컬렉션 추가 가능)
+          setSavedContestsCount(0);
+        }
+      } catch (error) {
+        console.error("Failed to load user data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, []);
+
+  const menuItems: MenuItem[] = [
+    {
+      icon: "document-text-outline",
+      label: "내 게시글",
+      count: myPostsCount,
+      page: "MyPosts",
+    },
+    {
+      icon: "notifications-outline",
+      label: "알림 설정",
+      count: null,
+      page: "NotificationSettings",
+    },
+    {
+      icon: "help-circle-outline",
+      label: "도움말",
+      count: null,
+      page: "Help",
+    },
+    {
+      icon: "settings-outline",
+      label: "설정",
+      count: null,
+      page: "Settings",
+    },
+  ];
+
+  const handleLogout = async () => {
+    Alert.alert("로그아웃", "정말 로그아웃하시겠습니까?", [
+      { text: "취소", style: "cancel" },
+      {
+        text: "로그아웃",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await signOut(auth);
+            router.replace("/");
+          } catch (error) {
+            console.error("Logout error", error);
+            Alert.alert("오류", "로그아웃에 실패했습니다.");
+          }
+        },
+      },
+    ]);
   };
+
+  const handleMenuPress = (item: MenuItem) => {
+    if (item.page) {
+      // 나중에 페이지 라우팅 추가 가능
+      Alert.alert("준비 중", `${item.label} 기능은 준비 중입니다.`);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: "마이" }} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#111827" />
+        </View>
+      </View>
+    );
+  }
+
+  const userInitial = user?.displayName?.[0] || user?.email?.[0] || "U";
 
   return (
     <View style={styles.container}>
-      <Stack.Screen 
-        options={{ 
-          title: "나의 자산",
-          headerTitleAlign: "center",
-          headerTitleStyle: { fontSize: 18, fontWeight: "700" }
-        }} 
-      />
+      <Stack.Screen options={{ title: "마이" }} />
 
-      {/* 고정 헤더 섹션 */}
-      <View style={styles.fixedSection}>
-        {/* 상단 안정추구형 프로필 카드 */}
-        <View style={styles.profileCard}>
-          <View style={styles.circleContainer}>
-            <View style={styles.semicircle} />
-          </View>
-          
-          <Text style={styles.profileTitle}>안정추구형</Text>
-          <Text style={styles.profileDescription}>
-            안정투자형은 위험을 최소화하고 원금 보전을 중시하는 투자 유형입니다.
-          </Text>
-        </View>
-
-        {/* 자산구성하기 버튼 */}
-        <TouchableOpacity style={styles.addButton} onPress={handleAssetConfig}>
-          <Text style={styles.addButtonText}>자산구성하기</Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>마이</Text>
+        <TouchableOpacity style={styles.settingsButton}>
+          <Ionicons name="settings-outline" size={20} color="#111827" />
         </TouchableOpacity>
       </View>
 
-      {/* 스크롤 가능한 섹션 */}
-      <ScrollView 
-        style={styles.scrollSection}
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 투자상품 카드 */}
-        <View style={styles.productCard}>
-          <View style={styles.productContent}>
-            <Text style={styles.productText}>KB증권 공모주 청약 시, 청약한도 150% 우대혜택을 제공하는</Text>
-            <Text style={styles.productText}>KB증권 공모주 1.5배 정기예금</Text>
-          </View>
-          <View style={styles.toggleContainer}>
-            <View style={[styles.triangle, { width: 0, height: 0, borderWidth: 8 }]} />
-            <View style={styles.toggle}>
-              <View style={styles.toggleCircle} />
+        {/* Profile Section */}
+        <View style={styles.profileCard}>
+          <View style={styles.profileRow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{userInitial.toUpperCase()}</Text>
             </View>
+            <View style={styles.profileInfo}>
+              <View style={styles.nameRow}>
+                <Text style={styles.name}>
+                  {user?.displayName || "사용자"}
+                </Text>
+                {/* 대학 배지 (나중에 사용자 데이터에 추가 가능) */}
+              </View>
+              <Text style={styles.email}>{user?.email || ""}</Text>
+            </View>
+          </View>
+
+          {/* 학생 인증 버튼 (나중에 구현) */}
+          <TouchableOpacity style={styles.verifyButton}>
+            <Text style={styles.verifyButtonText}>학생 인증하기</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Stats */}
+        <View style={styles.statsCard}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{myPostsCount}</Text>
+            <Text style={styles.statLabel}>작성 글</Text>
+          </View>
+          <View style={[styles.statItem, styles.statItemBorder]}>
+            <Text style={styles.statNumber}>{commentsCount}</Text>
+            <Text style={styles.statLabel}>댓글</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{savedContestsCount}</Text>
+            <Text style={styles.statLabel}>저장한 공고</Text>
           </View>
         </View>
 
-        {/* 동적으로 생성되는 지표 카드들 */}
-        {indicatorItems.map((item, index) => (
-          <View key={item.id} style={styles.progressCard}>
-            <View style={styles.progressHeader}>
-              <Text style={styles.progressLabel}>{item.title}</Text>
-              <TouchableOpacity onPress={() => router.push(`/invest/${item.id}`)}>
-                <Text style={styles.detailButton}>자세히보기</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.progressRow}>
-              <View style={styles.progressBarContainer}>
-                <View style={styles.progressBar}>
-                  {[1, 2, 3, 4, 5].map((segment, i) => (
-                    <View 
-                      key={i}
-                      style={[
-                        styles.progressSegment,
-                        i < item.level && styles.progressSegmentActive
-                      ]} 
-                    />
-                  ))}
-                </View>
+        {/* Menu Items */}
+        <View style={styles.menuCard}>
+          {menuItems.map((item, index) => (
+            <TouchableOpacity
+              key={item.label}
+              style={[
+                styles.menuItem,
+                index < menuItems.length - 1 && styles.menuItemBorder,
+              ]}
+              onPress={() => handleMenuPress(item)}
+            >
+              <View style={styles.menuItemLeft}>
+                <Ionicons name={item.icon} size={20} color="#4B5563" />
+                <Text style={styles.menuItemText}>{item.label}</Text>
               </View>
-              <Text style={styles.progressText}>{item.level}/3</Text>
-            </View>
-          </View>
-        ))}
+              <View style={styles.menuItemRight}>
+                {item.count !== null && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{item.count}</Text>
+                  </View>
+                )}
+                <Ionicons
+                  name="chevron-forward-outline"
+                  size={20}
+                  color="#9CA3AF"
+                />
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-        {/* 자산 구성하기 버튼 */}
-        <TouchableOpacity style={styles.configureButton} onPress={handleAssetConfig}>
-          <Text style={styles.configureButtonText}>자산 구성하기</Text>
-        </TouchableOpacity>
+        {/* Logout */}
+        <View style={styles.logoutCard}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+          >
+            <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+            <Text style={styles.logoutText}>로그아웃</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -111,198 +248,168 @@ export default function MyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "#F9FAFB",
   },
-  fixedSection: {
-    padding: 20,
-    paddingBottom: 10,
-  },
-  scrollSection: {
+  loadingContainer: {
     flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingTop: 10,
-    paddingBottom: 50,
-  },
-  profileCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
     alignItems: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOpacity: 0.08,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 },
-      },
-      android: { elevation: 4 },
-    }),
+    justifyContent: "center",
   },
-  circleContainer: {
-    marginBottom: 16,
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 12,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
   },
-  semicircle: {
-    width: 100,
-    height: 50,
-    backgroundColor: "#3B82F6",
-    borderTopLeftRadius: 50,
-    borderTopRightRadius: 50,
-  },
-  profileTitle: {
+  headerTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: "#111827",
+  },
+  settingsButton: {
+    padding: 4,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  profileCard: {
+    backgroundColor: "#FFFFFF",
+    padding: 24,
     marginBottom: 8,
   },
-  profileDescription: {
-    fontSize: 14,
-    color: "#6B7280",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  addButton: {
-    backgroundColor: "#FFFFFF",
+  profileRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginBottom: 0,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    marginBottom: 16,
   },
-  addButtonIcon: {
-    fontSize: 18,
-    fontWeight: "600",
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#4F46E5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+  avatarText: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  name: {
+    fontSize: 20,
+    fontWeight: "700",
     color: "#111827",
     marginRight: 8,
   },
-  addButtonText: {
+  email: {
+    fontSize: 14,
+    color: "#6B7280",
+  },
+  verifyButton: {
+    backgroundColor: "#4F46E5",
+    borderRadius: 999,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: "center",
+  },
+  verifyButtonText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#111827",
+    color: "#FFFFFF",
   },
-  productCard: {
+  statsCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 8,
     flexDirection: "row",
+  },
+  statItem: {
+    flex: 1,
     alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: 1,
+  },
+  statItemBorder: {
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
     borderColor: "#E5E7EB",
   },
-  productContent: {
-    flex: 1,
-    marginRight: 12,
-  },
-  productText: {
-    fontSize: 13,
-    color: "#6B7280",
-    lineHeight: 18,
-  },
-  toggleContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  triangle: {
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderBottomWidth: 10,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderBottomColor: "#9CA3AF",
+  statNumber: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#111827",
     marginBottom: 4,
   },
-  toggle: {
-    width: 32,
-    height: 16,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 8,
-    justifyContent: "center",
-    paddingHorizontal: 2,
-  },
-  toggleCircle: {
-    width: 12,
-    height: 12,
-    backgroundColor: "#22C55E",
-    borderRadius: 6,
-    alignSelf: "flex-end",
-  },
-  progressCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  progressHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  progressLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  detailButton: {
+  statLabel: {
     fontSize: 12,
-    color: "#9CA3AF",
-    fontWeight: "500",
+    color: "#6B7280",
   },
-  progressRow: {
+  menuCard: {
+    backgroundColor: "#FFFFFF",
+    marginBottom: 8,
+  },
+  menuItem: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  progressBarContainer: {
-    flex: 1,
-    position: "relative",
-    marginRight: 12,
-  },
-  progressBar: {
-    flexDirection: "row",
     justifyContent: "space-between",
-    height: 8,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 4,
-    paddingHorizontal: 2,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  menuItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  menuItemLeft: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 12,
   },
-  progressSegment: {
-    width: 8,
-    height: 6,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 2,
-  },
-  progressSegmentActive: {
-    backgroundColor: "#EF4444",
-  },
-  progressText: {
-    fontSize: 14,
-    fontWeight: "600",
+  menuItemText: {
+    fontSize: 16,
     color: "#111827",
   },
-  configureButton: {
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+  menuItemRight: {
+    flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    gap: 8,
+  },
+  badge: {
+    backgroundColor: "#F3F4F6",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#4B5563",
+  },
+  logoutCard: {
+    backgroundColor: "#FFFFFF",
     marginTop: 8,
   },
-  configureButtonText: {
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+  },
+  logoutText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#111827",
+    color: "#EF4444",
   },
 });
