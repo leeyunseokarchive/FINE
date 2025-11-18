@@ -1,91 +1,134 @@
-import { Stack, router } from "expo-router";
-import React, { useState } from "react";
+import { router, useNavigation } from "expo-router";
+import React, { useState, useLayoutEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
-import * as WebBrowser from "expo-web-browser";
-import * as Google from "expo-auth-session/providers/google";
+import { signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
 import { auth } from "../src/config/firebase";
 
-// WebBrowser 완료 후 인증 세션 정리
-WebBrowser.maybeCompleteAuthSession();
-
 export default function LoginScreen() {
+  const navigation = useNavigation();
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<"phone" | "code">("phone");
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: "153902197035-fa2bukhhigeu3sq158fjjd6l57qsbogf.apps.googleusercontent.com",
-    androidClientId: "153902197035-k213b9lpu95nk395nt4224al051abdni.apps.googleusercontent.com",
-    iosClientId: "YOUR_IOS_CLIENT_ID", // iOS용 (선택사항)
-  });
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerShown: false,
+    });
+  }, [navigation]);
 
-  React.useEffect(() => {
-    if (response?.type === "success") {
-      const { id_token } = response.params;
-      if (id_token) {
-        handleGoogleSignIn(id_token);
-      } else {
-        console.error("No id_token in response", response);
-        Alert.alert("로그인 오류", "인증 토큰을 받지 못했습니다.");
-        setLoading(false);
-      }
-    } else if (response?.type === "error") {
-      console.error("Google auth error", response.error);
-      Alert.alert(
-        "로그인 오류",
-        response.error?.message || "구글 로그인에 실패했습니다."
-      );
-      setLoading(false);
-    } else if (response?.type === "cancel") {
-      console.log("User cancelled login");
-      setLoading(false);
+  const formatPhoneNumber = (text: string) => {
+    // 숫자만 추출
+    const numbers = text.replace(/[^\d]/g, "");
+    // 한국 전화번호 형식으로 포맷팅 (010-1234-5678)
+    if (numbers.length <= 3) {
+      return numbers;
+    } else if (numbers.length <= 7) {
+      return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+    } else {
+      return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
     }
-  }, [response]);
+  };
 
-  const handleGoogleSignIn = async (idToken: string) => {
+  const handleSendCode = async () => {
+    if (!phoneNumber || phoneNumber.replace(/[^\d]/g, "").length < 10) {
+      Alert.alert("오류", "올바른 전화번호를 입력해주세요.");
+      return;
+    }
+
     try {
       setLoading(true);
-      const credential = GoogleAuthProvider.credential(idToken);
-      await signInWithCredential(auth, credential);
-      
-      // 로그인 성공 후 tabs로 이동
-      router.replace("/tabs");
+      // 숫자만 추출하고 국가 코드 추가 (한국: +82)
+      const cleanPhone = phoneNumber.replace(/[^\d]/g, "");
+      const formattedPhone = cleanPhone.startsWith("0")
+        ? `+82${cleanPhone.slice(1)}`
+        : `+82${cleanPhone}`;
+
+      console.log("Sending SMS to:", formattedPhone);
+      const confirmation = await signInWithPhoneNumber(auth, formattedPhone);
+      setConfirmationResult(confirmation);
+      setStep("code");
+      Alert.alert("성공", "인증 코드가 전송되었습니다.");
     } catch (error: any) {
-      console.error("Google sign in error", error);
-      Alert.alert("로그인 오류", error.message || "구글 로그인에 실패했습니다.");
+      console.error("Phone auth error:", error);
+      let errorMessage = "인증 코드 전송에 실패했습니다.";
+      
+      if (error.code === "auth/invalid-phone-number") {
+        errorMessage = "올바른 전화번호 형식이 아닙니다.";
+      } else if (error.code === "auth/too-many-requests") {
+        errorMessage = "너무 많은 요청이 있었습니다. 나중에 다시 시도해주세요.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert("오류", errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleVerifyCode = async () => {
+    if (!verificationCode || verificationCode.length !== 6) {
+      Alert.alert("오류", "6자리 인증 코드를 입력해주세요.");
+      return;
+    }
+
+    if (!confirmationResult) {
+      Alert.alert("오류", "인증 세션이 만료되었습니다. 다시 시도해주세요.");
+      setStep("phone");
+      return;
+    }
+
     try {
       setLoading(true);
-      const result = await promptAsync();
-      if (!result) {
-        setLoading(false);
-      }
+      await confirmationResult.confirm(verificationCode);
+      
+      // 로그인 성공 후 tabs로 이동
+      Alert.alert("성공", "로그인되었습니다.");
+      router.replace("/tabs");
     } catch (error: any) {
-      console.error("Google login prompt error", error);
-      Alert.alert(
-        "오류",
-        error?.message || "구글 로그인을 시작할 수 없습니다."
-      );
+      console.error("Code verification error:", error);
+      let errorMessage = "인증 코드가 올바르지 않습니다.";
+      
+      if (error.code === "auth/invalid-verification-code") {
+        errorMessage = "인증 코드가 올바르지 않습니다.";
+      } else if (error.code === "auth/code-expired") {
+        errorMessage = "인증 코드가 만료되었습니다. 다시 요청해주세요.";
+        setStep("phone");
+        setConfirmationResult(null);
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert("오류", errorMessage);
+    } finally {
       setLoading(false);
     }
   };
 
+  const handleBackToPhone = () => {
+    setStep("phone");
+    setVerificationCode("");
+    setConfirmationResult(null);
+  };
+
   return (
-    <View style={styles.container}>
-      <Stack.Screen options={{ headerShown: false }} />
-      
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
       <View style={styles.content}>
         <View style={styles.logoSection}>
           <View style={styles.logoCircle}>
@@ -97,24 +140,79 @@ export default function LoginScreen() {
           </Text>
         </View>
 
-        <View style={styles.buttonSection}>
-          <TouchableOpacity
-            style={[styles.googleButton, loading && styles.buttonDisabled]}
-            onPress={handleGoogleLogin}
-            disabled={loading || !request}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <>
-                <Ionicons name="logo-google" size={20} color="#FFFFFF" />
-                <Text style={styles.googleButtonText}>구글로 계속하기</Text>
-              </>
-            )}
-          </TouchableOpacity>
+        <View style={styles.formSection}>
+          {step === "phone" ? (
+            <>
+              <View style={styles.inputContainer}>
+                <Ionicons name="call-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="전화번호 (010-1234-5678)"
+                  placeholderTextColor="#9CA3AF"
+                  value={phoneNumber}
+                  onChangeText={(text) => setPhoneNumber(formatPhoneNumber(text))}
+                  keyboardType="phone-pad"
+                  autoFocus
+                  editable={!loading}
+                />
+              </View>
+              <TouchableOpacity
+                style={[styles.button, loading && styles.buttonDisabled]}
+                onPress={handleSendCode}
+                disabled={loading || !phoneNumber}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.buttonText}>인증 코드 전송</Text>
+                )}
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={handleBackToPhone}
+                disabled={loading}
+              >
+                <Ionicons name="arrow-back" size={20} color="#111827" />
+                <Text style={styles.backButtonText}>전화번호 변경</Text>
+              </TouchableOpacity>
+              
+              <Text style={styles.codeLabel}>
+                {phoneNumber}로 전송된{"\n"}6자리 인증 코드를 입력해주세요
+              </Text>
+
+              <View style={styles.inputContainer}>
+                <Ionicons name="lock-closed-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="인증 코드 6자리"
+                  placeholderTextColor="#9CA3AF"
+                  value={verificationCode}
+                  onChangeText={(text) => setVerificationCode(text.replace(/[^\d]/g, "").slice(0, 6))}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  autoFocus
+                  editable={!loading}
+                />
+              </View>
+              <TouchableOpacity
+                style={[styles.button, (loading || verificationCode.length !== 6) && styles.buttonDisabled]}
+                onPress={handleVerifyCode}
+                disabled={loading || verificationCode.length !== 6}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.buttonText}>인증 완료</Text>
+                )}
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -159,26 +257,64 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
   },
-  buttonSection: {
-    gap: 12,
+  formSection: {
+    gap: 16,
   },
-  googleButton: {
+  inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#4285F4",
+    backgroundColor: "#F9FAFB",
     borderRadius: 12,
-    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
     paddingHorizontal: 16,
+    minHeight: 56,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: "#111827",
+    paddingVertical: 14,
+  },
+  button: {
+    backgroundColor: "#111827",
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 56,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
-  googleButtonText: {
+  buttonText: {
     fontSize: 16,
     fontWeight: "600",
     color: "#FFFFFF",
   },
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    marginBottom: 8,
+  },
+  backButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#111827",
+    marginLeft: 4,
+  },
+  codeLabel: {
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
+    marginBottom: 8,
+    lineHeight: 20,
+  },
 });
-

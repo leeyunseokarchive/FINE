@@ -6,6 +6,7 @@ export default function RootLayout() {
     <AspectRatioView>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="tabs" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ title: "내 프로필", presentation: "modal" }} />
         <Stack.Screen name="company" options={{ title: "회사소개", presentation: "modal" }} />
