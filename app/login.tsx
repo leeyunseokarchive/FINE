@@ -5,23 +5,22 @@ import {
   Alert,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
-  KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
+import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
+import * as AuthSession from "expo-auth-session";
+import * as WebBrowser from "expo-web-browser";
 import { auth } from "../src/config/firebase";
+
+// WebBrowser 인증 완료 후 닫기
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const navigation = useNavigation();
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [verificationCode, setVerificationCode] = useState("");
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<"phone" | "code">("phone");
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -29,46 +28,108 @@ export default function LoginScreen() {
     });
   }, [navigation]);
 
-  const formatPhoneNumber = (text: string) => {
-    // 숫자만 추출
-    const numbers = text.replace(/[^\d]/g, "");
-    // 한국 전화번호 형식으로 포맷팅 (010-1234-5678)
-    if (numbers.length <= 3) {
-      return numbers;
-    } else if (numbers.length <= 7) {
-      return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
-    } else {
-      return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
-    }
+  const handleGuestLogin = () => {
+    router.replace("/tabs");
   };
 
-  const handleSendCode = async () => {
-    if (!phoneNumber || phoneNumber.replace(/[^\d]/g, "").length < 10) {
-      Alert.alert("오류", "올바른 전화번호를 입력해주세요.");
-      return;
-    }
-
+  const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      // 숫자만 추출하고 국가 코드 추가 (한국: +82)
-      const cleanPhone = phoneNumber.replace(/[^\d]/g, "");
-      const formattedPhone = cleanPhone.startsWith("0")
-        ? `+82${cleanPhone.slice(1)}`
-        : `+82${cleanPhone}`;
 
-      console.log("Sending SMS to:", formattedPhone);
-      const confirmation = await signInWithPhoneNumber(auth, formattedPhone);
-      setConfirmationResult(confirmation);
-      setStep("code");
-      Alert.alert("성공", "인증 코드가 전송되었습니다.");
-    } catch (error: any) {
-      console.error("Phone auth error:", error);
-      let errorMessage = "인증 코드 전송에 실패했습니다.";
+      // Google OAuth 설정
+      // 참고: Firebase Console > Authentication > Sign-in method > Google에서
+      // Web 클라이언트 ID를 가져와서 EXPO_PUBLIC_GOOGLE_CLIENT_ID 환경변수로 설정하세요
+      const clientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
       
-      if (error.code === "auth/invalid-phone-number") {
-        errorMessage = "올바른 전화번호 형식이 아닙니다.";
-      } else if (error.code === "auth/too-many-requests") {
-        errorMessage = "너무 많은 요청이 있었습니다. 나중에 다시 시도해주세요.";
+      if (!clientId || clientId === "YOUR_GOOGLE_CLIENT_ID") {
+        Alert.alert(
+          "설정 필요",
+          "Google OAuth 클라이언트 ID가 설정되지 않았습니다.\n\n" +
+          "설정 방법:\n" +
+          "1. Firebase Console > Authentication > Sign-in method > Google 이동\n" +
+          "2. '웹 클라이언트 ID' 복사\n" +
+          "3. 프로젝트 루트에 .env 파일 생성 후 다음 추가:\n" +
+          "   EXPO_PUBLIC_GOOGLE_CLIENT_ID=복사한_클라이언트_ID\n" +
+          "4. 앱 재시작"
+        );
+        setLoading(false);
+        return;
+      }
+
+      const redirectUri = AuthSession.makeRedirectUri({
+        scheme: "fine",
+      });
+
+      const discovery = {
+        authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+        tokenEndpoint: "https://oauth2.googleapis.com/token",
+        revocationEndpoint: "https://oauth2.googleapis.com/revoke",
+      };
+
+      const request = new AuthSession.AuthRequest({
+        clientId,
+        scopes: ["openid", "profile", "email"],
+        responseType: AuthSession.ResponseType.Code,
+        redirectUri,
+        extraParams: {},
+      });
+
+      const result = await request.promptAsync(discovery);
+
+      if (result.type === "success" && result.params.code) {
+        // Authorization code를 id_token으로 교환 (PKCE 사용)
+        
+        // PKCE 파라미터 (AuthRequest가 자동 생성)
+        const codeVerifier = request.codeVerifier;
+        
+        const tokenParams: Record<string, string> = {
+          client_id: clientId!,
+          code: result.params.code,
+          redirect_uri: redirectUri,
+          grant_type: "authorization_code",
+        };
+        
+        // PKCE 사용 시 code_verifier 추가
+        if (codeVerifier) {
+          tokenParams.code_verifier = codeVerifier;
+        }
+        
+        const tokenResponse = await fetch(discovery.tokenEndpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams(tokenParams).toString(),
+        });
+
+        const tokenData = await tokenResponse.json();
+
+        if (!tokenResponse.ok || !tokenData.id_token) {
+          throw new Error(tokenData.error_description || "Google 인증 토큰을 받지 못했습니다.");
+        }
+
+        const idToken = tokenData.id_token;
+
+        // Firebase에 Google 인증 정보 전달
+        const credential = GoogleAuthProvider.credential(idToken);
+        await signInWithCredential(auth, credential);
+
+        // 로그인 성공 후 tabs로 이동
+        Alert.alert("성공", "로그인되었습니다.");
+        router.replace("/tabs");
+      } else {
+        if (result.type !== "dismiss") {
+          Alert.alert("오류", "Google 로그인이 취소되었습니다.");
+        }
+      }
+    } catch (error: any) {
+      console.error("Google sign in error:", error);
+      let errorMessage = "Google 로그인에 실패했습니다.";
+      
+      if (error.code === "auth/account-exists-with-different-credential") {
+        errorMessage = "이 이메일은 다른 인증 방법으로 이미 등록되어 있습니다.";
+      } else if (error.code === "auth/invalid-credential") {
+        errorMessage = "인증 정보가 유효하지 않습니다.";
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -77,58 +138,10 @@ export default function LoginScreen() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleVerifyCode = async () => {
-    if (!verificationCode || verificationCode.length !== 6) {
-      Alert.alert("오류", "6자리 인증 코드를 입력해주세요.");
-      return;
-    }
-
-    if (!confirmationResult) {
-      Alert.alert("오류", "인증 세션이 만료되었습니다. 다시 시도해주세요.");
-      setStep("phone");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await confirmationResult.confirm(verificationCode);
-      
-      // 로그인 성공 후 tabs로 이동
-      Alert.alert("성공", "로그인되었습니다.");
-      router.replace("/tabs");
-    } catch (error: any) {
-      console.error("Code verification error:", error);
-      let errorMessage = "인증 코드가 올바르지 않습니다.";
-      
-      if (error.code === "auth/invalid-verification-code") {
-        errorMessage = "인증 코드가 올바르지 않습니다.";
-      } else if (error.code === "auth/code-expired") {
-        errorMessage = "인증 코드가 만료되었습니다. 다시 요청해주세요.";
-        setStep("phone");
-        setConfirmationResult(null);
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      Alert.alert("오류", errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBackToPhone = () => {
-    setStep("phone");
-    setVerificationCode("");
-    setConfirmationResult(null);
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
+    <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.logoSection}>
           <View style={styles.logoCircle}>
@@ -141,78 +154,33 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.formSection}>
-          {step === "phone" ? (
-            <>
-              <View style={styles.inputContainer}>
-                <Ionicons name="call-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="전화번호 (010-1234-5678)"
-                  placeholderTextColor="#9CA3AF"
-                  value={phoneNumber}
-                  onChangeText={(text) => setPhoneNumber(formatPhoneNumber(text))}
-                  keyboardType="phone-pad"
-                  autoFocus
-                  editable={!loading}
-                />
-              </View>
-              <TouchableOpacity
-                style={[styles.button, loading && styles.buttonDisabled]}
-                onPress={handleSendCode}
-                disabled={loading || !phoneNumber}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.buttonText}>인증 코드 전송</Text>
-                )}
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={handleBackToPhone}
-                disabled={loading}
-              >
-                <Ionicons name="arrow-back" size={20} color="#111827" />
-                <Text style={styles.backButtonText}>전화번호 변경</Text>
-              </TouchableOpacity>
-              
-              <Text style={styles.codeLabel}>
-                {phoneNumber}로 전송된{"\n"}6자리 인증 코드를 입력해주세요
-              </Text>
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleGoogleSignIn}
+            disabled={loading}
+            activeOpacity={0.7}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="logo-google" size={20} color="#FFFFFF" style={styles.buttonIcon} />
+                <Text style={styles.buttonText}>Google로 로그인</Text>
+              </>
+            )}
+          </TouchableOpacity>
 
-              <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="인증 코드 6자리"
-                  placeholderTextColor="#9CA3AF"
-                  value={verificationCode}
-                  onChangeText={(text) => setVerificationCode(text.replace(/[^\d]/g, "").slice(0, 6))}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  autoFocus
-                  editable={!loading}
-                />
-              </View>
-              <TouchableOpacity
-                style={[styles.button, (loading || verificationCode.length !== 6) && styles.buttonDisabled]}
-                onPress={handleVerifyCode}
-                disabled={loading || verificationCode.length !== 6}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.buttonText}>인증 완료</Text>
-                )}
-              </TouchableOpacity>
-            </>
-          )}
+          <TouchableOpacity
+            style={styles.guestButton}
+            onPress={handleGuestLogin}
+            disabled={loading}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.guestButtonText}>로그인 없이 이용하기</Text>
+          </TouchableOpacity>
         </View>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -260,25 +228,6 @@ const styles = StyleSheet.create({
   formSection: {
     gap: 16,
   },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F9FAFB",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingHorizontal: 16,
-    minHeight: 56,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: "#111827",
-    paddingVertical: 14,
-  },
   button: {
     backgroundColor: "#111827",
     borderRadius: 12,
@@ -287,34 +236,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     minHeight: 56,
+    flexDirection: "row",
+    gap: 8,
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  buttonIcon: {
+    marginRight: 4,
   },
   buttonText: {
     fontSize: 16,
     fontWeight: "600",
     color: "#FFFFFF",
   },
-  backButton: {
-    flexDirection: "row",
+  guestButton: {
+    backgroundColor: "transparent",
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     alignItems: "center",
-    alignSelf: "flex-start",
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    marginBottom: 8,
+    justifyContent: "center",
+    minHeight: 56,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
-  backButtonText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#111827",
-    marginLeft: 4,
-  },
-  codeLabel: {
-    fontSize: 14,
+  guestButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
     color: "#6B7280",
-    textAlign: "center",
-    marginBottom: 8,
-    lineHeight: 20,
   },
 });
